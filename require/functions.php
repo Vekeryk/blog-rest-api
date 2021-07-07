@@ -55,7 +55,11 @@ function uploadImage($file) {
     $fileName  =  $file['image']['name'];
     $tempPath  =  $file['image']['tmp_name'];
     $fileSize  =  $file['image']['size'];
-            
+    
+    if (!is_dir('images')) {
+        mkdir('images', 0777, true);
+    }
+
     if(empty($fileName)) {
         $error = [ "message" => "Додайте зображення до поста", "status" => false ];
     }

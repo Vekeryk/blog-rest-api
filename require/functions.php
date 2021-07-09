@@ -9,7 +9,7 @@ function getPosts ($mysql) {
         $postsList[] = $post;
     }
 
-    echo json_encode($postsList);
+    echo json_encode($postsList, JSON_UNESCAPED_UNICODE);
 }
 
 function getPost ($mysql, $id) {
@@ -22,11 +22,11 @@ function getPost ($mysql, $id) {
             "message" => "Такий пост не знайдено"
         ];
 
-        echo json_encode($res);
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
     } else {
         $post = mysqli_fetch_assoc($post);
 
-        echo json_encode($post);
+        echo json_encode($post, JSON_UNESCAPED_UNICODE);
     }
 }
 
@@ -47,7 +47,7 @@ function addPost ($mysql, $data, $file) {
             "post_id" => mysqli_insert_id($mysql)
         ];
 
-        echo json_encode($res);
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
     }
 }
 
@@ -88,7 +88,7 @@ function uploadImage($file) {
     }
 
     if(isset($error)) {
-        echo json_encode($error);
+        echo json_encode($error, JSON_UNESCAPED_UNICODE);
         return False;
     }
     else {
@@ -110,10 +110,12 @@ function updatePost($mysql, $id, $data) {
         "message" => "Пост оновлено"
     ];
 
-    echo json_encode($res);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
 }
 
 function deletePost($mysql, $id) {
+    deleteImage($mysql, $id);
+
     $mysql->query("DELETE FROM `blogs` WHERE `blogs`.`id` = '$id'");
 
     http_response_code(200);
@@ -123,5 +125,11 @@ function deletePost($mysql, $id) {
         "message" => "Пост видалено"
     ];
 
-    echo json_encode($res);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+}
+
+function deleteImage($mysql, $id) {
+    $post = $mysql->query("SELECT * FROM `blogs` WHERE `id` = '$id'");
+    $post = mysqli_fetch_assoc($post);
+    unlink($post["image"]);
 }

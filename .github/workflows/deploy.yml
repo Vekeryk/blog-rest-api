@@ -13,4 +13,4 @@ jobs:
       - run: echo "${{ secrets.KEY }}" > "$HOME/.ssh/key"
       - run: chmod 600 "$HOME/.ssh/key"
 
-      - run: rsync -e "ssh -i $HOME/.ssh/key -o StrictHostKeyChecking=no" -av --progress --delete --exclude 'phpmyadmin' --exclude 'images' --exclude 'README.md' --exclude '.gitignore' --exclude '.git' --exclude '.github' . ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/var/www/mytestapi.fun
+      - run: rsync -e "ssh -i $HOME/.ssh/key -o StrictHostKeyChecking=no" -av --progress --delete --exclude 'phpmyadmin' --exclude 'config/config.php' --exclude 'images' --exclude 'README.md' --exclude '.gitignore' --exclude '.git' --exclude '.github' . ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/var/www/mytestapi.fun

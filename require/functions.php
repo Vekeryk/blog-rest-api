@@ -31,12 +31,20 @@ function getPost ($mysql, $id) {
 }
 
 function addPost ($mysql, $data, $file) {
+    if(!$data['title']) {
+        http_response_code(415);
+        $res = [
+            "status" => false,
+            "message" => "Пост обов' язково має містити заголовок"
+        ];
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
+        return;
+    }
     // якщо фото завантажено успішно
     $image = uploadImage($file);
     if($image) {
         $title = $data['title'];
         $body = $data['body'];
-        
 
         $mysql->query("INSERT INTO `blogs` (`id`, `title`, `body`, `image`) VALUES (NULL, '$title', '$body', '$image')");
 
@@ -55,13 +63,10 @@ function uploadImage($file) {
     $fileName  =  $file['image']['name'];
     $tempPath  =  $file['image']['tmp_name'];
     $fileSize  =  $file['image']['size'];
-    
-    if (!is_dir('images')) {
-        mkdir('images', 0777, true);
-    }
 
     if(empty($fileName)) {
-        $error = [ "message" => "Додайте зображення до поста", "status" => false ];
+        http_response_code(415);
+        $error = [ "status" => false, "message" => "Додайте зображення до поста" ];
     }
     else {
         $uploadPath = 'images/';
@@ -78,12 +83,14 @@ function uploadImage($file) {
                 $filePath = $uploadPath . time() . ".$fileExt";
                 move_uploaded_file($tempPath, $filePath); // переміщує файл з тимчасового сховища в папку image
             }
-            else {		
-                $error = [ "message" => "Величина файлу перевищує 5 MB", "status" => false ];
+            else {
+                http_response_code(415);	
+                $error = [ "status" => false, "message" => "Величина файлу перевищує 5 MB" ];
             }
         }
-        else {		
-            $error = [ "message" => "Дозволено тільки файли з розширенням JPG, JPEG та PNG", "status" => false ];
+        else {
+            http_response_code(415);
+            $error = [ "status" => false, "message" => "Дозволено тільки файли з розширенням JPG, JPEG та PNG" ];
         }
     }
 
@@ -96,20 +103,28 @@ function uploadImage($file) {
     }
 }
 
-function updatePost($mysql, $id, $data) {
+function updatePost($mysql, $id, $data, $file) {
     $title = $data['title'];
     $body = $data['body'];
-    $image = $data['image'];
 
-    $mysql->query("UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `blogs`.`id` = '$id'");
-
+    if(empty($_FILES)) {
+        $image = $data['image'];
+        $mysql->query("UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'");
+    }
+    else {
+        $image = uploadImage($file);
+        if($image) {
+            $mysql->query("UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'");
+        }
+        else {
+            return;
+        }
+    }
     http_response_code(200);
-
     $res = [
         "status" => true,
         "message" => "Пост оновлено"
     ];
-
     echo json_encode($res, JSON_UNESCAPED_UNICODE);
 }
 

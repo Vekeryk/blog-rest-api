@@ -41,7 +41,7 @@ switch ($method) {
                 // приймаємо json
                 $data = file_get_contents('php://input');
                 $data = json_decode($data, true);
-                updatePost($mysql, $id, $data);
+                updatePost($mysql, $id, $data, $_FILES);
             }
         }
         break;

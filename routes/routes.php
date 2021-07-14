@@ -4,6 +4,8 @@ $router->get('posts/([0-9]+)', 'posts@getPost');
 
 $router->get('posts', 'posts@getPosts');
 
+$router->post('posts', 'posts@addPost');
+
 $router->patch('posts/([0-9]+)', 'posts@updatePost');
 
 $router->delete('posts/([0-9]+)', 'posts@deletePost');

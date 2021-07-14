@@ -102,19 +102,17 @@ class Posts {
     }
 
     public function updatePost($id) {
-        $data = file_get_contents('php://input');
-        $data = json_decode($data, true);
-        if (!$data['title']) {
+        if (!$_POST['title']) {
             return [ 
                 "status" => false, 
                 "message" => "Пост обов'язково має містити заголовок"
             ];
         }
-        $title = $data['title'];
-        $body = $data['body'];
+        $title = $_POST['title'];
+        $body = $_POST['body'];
 
         if(empty($_FILES)) {
-            $image = $data['image'];
+            $image = $_POST['image'];
             $query = "UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'";
             $this->database->run($query);
         }

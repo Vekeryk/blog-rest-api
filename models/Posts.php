@@ -1,14 +1,14 @@
 <?php
 
 class Posts {
+
     private $database;
 
     public function __construct() {
         $this->database = new Database();
     }
 
-    public function getPosts() 
-    {
+    public function getPosts() {
         $query = "SELECT * FROM `blogs`";
         $stmt = $this->database->run($query);
 
@@ -21,38 +21,34 @@ class Posts {
         return $postsList;
     }
 
-    public function getPost($id) 
-    {
+    public function getPost($id) {
+        $post = $this->postExist($id);
+        if ($post) {
+            return $post;
+        } else {
+            http_response_code(404);
+            return [ "status" => false, "message" => "Пост не знайдено" ];
+        }
+    }
+
+    private function postExist($id) {
         $query = "SELECT * FROM `blogs` WHERE `id` = '$id'";
         $stmt = $this->database->run($query);
-
-        $num_rows = $stmt->rowCount();
-
-        if ($num_rows === 0) {
-            http_response_code(404);
-            $post = [
-                "status" => false,
-                "message" => "Такий пост не знайдено"
-            ];
-        } else {
-            $post = $stmt->fetch(PDO::FETCH_ASSOC);
-        }
+        $post = $stmt->fetch(PDO::FETCH_ASSOC);
+        
         return $post;
     }
 
-    public function addPost() 
-    {
+    public function addPost() {
         if (!$_POST['title']) {
-            $error = [
-                "status" => false,
-                "message" => "Пост обов' язково має містити заголовок"
+            return [ 
+                "status" => false, 
+                "message" => "Пост обов'язково має містити заголовок"
             ];
-            return $error;
         };
 
-        // якщо фото завантажено успішно
         $image = $this->uploadImage($_FILES);
-
+        // якщо фото завантажено успішно
         if (!is_string($image)) {
             return $image;
         } 
@@ -64,76 +60,94 @@ class Posts {
             $this->database->run($query);
 
             http_response_code(201);
-            $result = [
-                "status" => true,
-                "post_id" => $this->database->conn->lastInsertId()
-            ];
+            return [ "status" => true, "post_id" => $this->database->conn->lastInsertId() ];
         }
-
-        return $result;
     }
 
-    private function uploadImage($file) {
-        $fileName  =  $file['image']['name'];
-        $tempPath  =  $file['image']['tmp_name'];
-        $fileSize  =  $file['image']['size'];
-    
-        if(empty($fileName)) {
+    private function uploadImage() {
+        $file_name  =  $_FILES['image']['name'];
+        $temp_path  =  $_FILES['image']['tmp_name'];
+        $file_size  =  $_FILES['image']['size'];
+        $uploadPath = 'images/';
+
+        $file_ext = pathinfo($file_name, PATHINFO_EXTENSION); // отримання розширення
+
+        $error = $this->validateImage($file_name, $file_ext, $file_size);
+        if (isset($error)) {
+            return $error;
+        }
+
+        $path = $uploadPath . time() . ".$file_ext";
+        move_uploaded_file($temp_path, $path); // переміщує файл з тимчасового сховища в папку image
+        return $path;
+    }
+
+    private function validateImage($file_name, $file_ext, $file_size) {
+        $valid_extensions = ['jpeg', 'jpg', 'png']; // список допустимих розширень
+
+        if(empty($file_name)) {
             http_response_code(415);
-            $result = [ "status" => false, "message" => "Додайте зображення до поста" ];
+            return [ "status" => false, "message" => "Додайте зображення до поста" ];
+        }
+        // Дозволити файли тільки з валідними розширеннями
+        if(!in_array($file_ext, $valid_extensions)) {
+            http_response_code(415);
+            return [ "status" => false, "message" => "Дозволено тільки файли з розширенням JPG, JPEG та PNG" ];
+        }
+        // Перевіряє розмір файлу '5MB'
+        if($file_size > 5000000) {
+            http_response_code(415);	
+            return [ "status" => false, "message" => "Величина файлу перевищує 5 MB" ];
+        }
+    }
+
+    public function updatePost($id) {
+        $data = file_get_contents('php://input');
+        $data = json_decode($data, true);
+        if (!$data['title']) {
+            return [ 
+                "status" => false, 
+                "message" => "Пост обов'язково має містити заголовок"
+            ];
+        }
+        $title = $data['title'];
+        $body = $data['body'];
+
+        if(empty($_FILES)) {
+            $image = $data['image'];
+            $query = "UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'";
+            $this->database->run($query);
         }
         else {
-            $uploadPath = 'images/';
-            
-            $fileExt = pathinfo($fileName, PATHINFO_EXTENSION); // отримання розширення
-                
-            // список допустимих розширень
-            $valid_extensions = array('jpeg', 'jpg', 'png'); 
-                            
-            // дозволити файли тільки з валідними розширеннями
-            if(in_array($fileExt, $valid_extensions)) {				
-                // Перевіряє розмір файлу '5MB'
-                if($fileSize < 5000000) {
-                    $result = $uploadPath . time() . ".$fileExt";
-                    move_uploaded_file($tempPath, $result); // переміщує файл з тимчасового сховища в папку image
-                }
-                else {
-                    http_response_code(415);	
-                    $result = [ "status" => false, "message" => "Величина файлу перевищує 5 MB" ];
-                }
+            $image = $this->uploadImage();
+
+            if(!is_string($image)) {
+                return $image;
             }
             else {
-                http_response_code(415);
-                $result = [ "status" => false, "message" => "Дозволено тільки файли з розширенням JPG, JPEG та PNG" ];
+                $query = "UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'";
+                $this->database->run($query);
             }
         }
-    
-        return $result;
+        http_response_code(200);
+        return [ "status" => true, "message" => "Пост оновлено" ];
     }
 
     public function deletePost($id) {
-        $query = "SELECT * FROM `blogs` WHERE `id` = '$id'";
-        $stmt = $this->database->run($query);
+        $post = $this->postExist($id);
 
-        if ($stmt->rowCount() === 0) {
-            $result = [
-                "status" => false,
-                "message" => "Пост не знайдено"
-            ];
-        }
-        else {
-            $post = $stmt->fetch(PDO::FETCH_ASSOC);
-            unlink($post["image"]);
-
+        if($post) {
             $query = "DELETE FROM `blogs` WHERE `blogs`.`id` = '$id'";
             $this->database->run($query);
-
+    
+            if (file_exists($post["image"]))
+                unlink($post["image"]);
+    
             http_response_code(200);
-            $result = [
-                "status" => true,
-                "message" => "Пост видалено"
-            ];
+            return [ "status" => true, "message" => "Пост видалено" ];
+
+        } else {
+            return  [ "status" => false, "message" => "Пост не знайдено" ];
         }
-        return $result;
     }
 }

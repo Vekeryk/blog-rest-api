@@ -1,67 +1,115 @@
 <?php
 
-class Router {
+class Router
+{
+    private $routers = [];
+    private $matchRouter = [];
 
-    private $routes;
+    private $url;
+    private $method;
+    private $params = [];
 
-    public function __construct()
-    {
-        $routesPath = 'config/routes.php';
-        $this->routes = include($routesPath);
+    public function __construct() {
+        $this->method = $_SERVER['REQUEST_METHOD'];
+        
+        $this->getUrl();
+    }
 
-        $url = $this->getUrl();
+    // Функції, що встановлюють тип запиту до маршруту
+    public function get($pattern, $action) {
+        $this->addRoute("GET", $pattern, $action);
+    }
 
-        foreach ($this->routes as $urlPattern => $path) {
-            if (preg_match("~$urlPattern~", $url[0])) {
+    public function post($pattern, $action) {
+        $this->addRoute('POST', $pattern, $action);
+    }
 
-                $controllerName = ucfirst($path) . 'Controller';
-                $method = $_SERVER['REQUEST_METHOD'];
+    public function patch($pattern, $action) {
+        $this->addRoute('PATCH', $pattern, $action);
+    }
 
-                switch ($method) {
-                    case "GET":
-                        if (isset($url[1])) {
-                            $actionName = 'getPost';
-                        } else {
-                            $actionName = 'getPosts';
-                        }
-                        break;
-                    case "POST":
-                        $actionName = 'addPost';
-                        break;
-                    case "PATCH":
-                        $actionName = 'updatePost';
-                        break;
-                    case "DELETE":
-                        $actionName = 'deletePost';
-                        break;
-                    default:
-                        http_response_code(404);
-                        echo "Запит недійсний";
-                        break;
-                }
+    public function delete($pattern, $action) {
+        $this->addRoute('DELETE', $pattern, $action);
+    }
 
-                $controllerFile = 'controllers/' . $controllerName . '.php';
-                if (file_exists($controllerFile)) {
-                    require_once($controllerFile);
-                }
-                $controllerOject = new $controllerName;
-                $result = $controllerOject->$actionName($url[1]);
-                if ($result != null) {
-                    break;
-                }
-                
-
-            }
-        }
+    //Додає шлях до списку
+    private function addRoute($method, $pattern, $action) {
+        array_push($this->routers, new Route($method, $pattern, $action));
     }
 
     private function getUrl() {
-        if(isset($_GET['url'])){
-            $url = rtrim($_GET['url'], '/');
-            $url = filter_var($url, FILTER_SANITIZE_URL);
-            $url = explode('/', $url);
-            return $url;
+        if (isset($_GET['url'])) {
+            $this->url = rtrim($_GET['url'], '/');
+
+            $param = explode('/', $this->url);
+            array_shift($param);
+        }
+        if (isset($param[0])) {
+            array_push($this->params, (int)$param[0]);
+        }
+    }
+    // Фільтрує шляхи відносно типу запиту
+    private function matchRoutersByRequest() {
+        foreach ($this->routers as $router) {
+            if ($this->method == $router->getMethod())
+                array_push($this->matchRouter, $router);
         }
     }
 
+    // Фільтрує шляхи відносно посилання
+    private function matchRoutersByPattern($pattern) {
+        $this->matchRouter = [];
+        foreach ($pattern as $router) {
+            if ($this->dispatch($this->url, $router->getPattern()))
+                array_push($this->matchRouter, $router);
+        }
+    }
+
+    // Порівнння посилання та паттерна
+    public function dispatch($uri, $pattern) {
+        if (preg_match("~$pattern~", $uri)) {
+            return true;
+        }
+        return false;
+    }
+
+    public function run() {
+        $this->matchRoutersByRequest();
+        $this->matchRoutersByPattern($this->matchRouter);
+
+        if (empty($this->matchRouter)) {
+            http_response_code(404);
+			echo 'Неіснуючий запит';
+		} else {
+            if (is_callable($this->matchRouter[0]->getAction()))
+                call_user_func($this->matchRouter[0]->getAction(), $this->params);
+            else
+                $this->runController($this->matchRouter[0]->getAction(), $this->params);
+        }
+    }
+
+    // Виклик метода контроллера
+    private function runController($controller, $params) {
+        $parts = explode('@', $controller);
+        $controller = $parts[0];
+        $method = $parts[1];
+
+        $file = "controllers/" . ucfirst($controller) . 'Controller.php';
+
+        if (file_exists($file)) {
+            require_once($file);
+
+            // Клас контроллера
+            $controller = ucfirst($controller) . 'Controller';
+
+            if (class_exists($controller))
+                $controller = new $controller();
+
+            // Виклик методу
+            if (is_callable([$controller, $method]))
+                return call_user_func_array([$controller, $method], $params);
+            else
+                echo 'Неможливо викликати контроллер або його метод';
+        }
+    }
 }

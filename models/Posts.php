@@ -102,21 +102,28 @@ class Posts {
     }
 
     public function updatePost($id) {
-        if (!$_POST['title']) {
+        $title = $_POST['title'];
+        $body = $_POST['body'];
+
+        if (!$title) {
             return [ 
                 "status" => false, 
                 "message" => "Пост обов'язково має містити заголовок"
             ];
         }
-        $title = $_POST['title'];
-        $body = $_POST['body'];
 
+        $query = $this->updateImage($id, $title, $body);
+
+        $this->database->run($query);
+        http_response_code(200);
+        return [ "status" => true, "message" => "Пост оновлено" ];
+    }
+
+    private function updateImage($id, $title, $body) {
         if(empty($_FILES)) {
             $image = $_POST['image'];
             $query = "UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'";
-            $this->database->run($query);
-        }
-        else {
+        } else {
             $image = $this->uploadImage();
 
             if(!is_string($image)) {
@@ -124,11 +131,9 @@ class Posts {
             }
             else {
                 $query = "UPDATE `blogs` SET `title` = '$title', `body` = '$body', `image` = '$image' WHERE `id` = '$id'";
-                $this->database->run($query);
             }
         }
-        http_response_code(200);
-        return [ "status" => true, "message" => "Пост оновлено" ];
+        return $query;
     }
 
     public function deletePost($id) {

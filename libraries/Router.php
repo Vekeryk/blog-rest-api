@@ -48,6 +48,7 @@ class Router
             array_push($this->params, (int)$param[0]);
         }
     }
+    
     // Фільтрує шляхи відносно типу запиту
     private function matchRoutersByRequest() {
         foreach ($this->routers as $router) {
@@ -78,7 +79,6 @@ class Router
         $this->matchRoutersByPattern($this->matchRouter);
 
         if (empty($this->matchRouter)) {
-            http_response_code(404);
 			echo 'Неіснуючий запит';
 		} else {
             if (is_callable($this->matchRouter[0]->getAction()))

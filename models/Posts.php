@@ -83,7 +83,7 @@ class Posts {
     }
 
     private function validateImage($file_name, $file_ext, $file_size) {
-        $valid_extensions = ['jpeg', 'jpg', 'png']; // список допустимих розширень
+        $valid_extensions = ['jpeg', 'jpg', 'png', 'gif']; // список допустимих розширень
 
         if(empty($file_name)) {
             http_response_code(415);
@@ -92,7 +92,7 @@ class Posts {
         // Дозволити файли тільки з валідними розширеннями
         if(!in_array($file_ext, $valid_extensions)) {
             http_response_code(415);
-            return [ "status" => false, "message" => "Дозволено тільки файли з розширенням JPG, JPEG та PNG" ];
+            return [ "status" => false, "message" => "Дозволено тільки файли з розширенням JPG, JPEG, PNG та GIF" ];
         }
         // Перевіряє розмір файлу '5MB'
         if($file_size > 5000000) {
